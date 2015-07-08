@@ -5,17 +5,24 @@
 
 using namespace std;
 
-int main()
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
-	return 0;
+	/*switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+		MessageBox(NULL,TEXT("关机代码"),TEXT("关机代码"),0);
+		//system("shutdown -s -t 10");
+	break;
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+	case DLL_PROCESS_DETACH:
+	break;
+	}*/
+	MessageBox(NULL, "123", "123", 0);
+	return TRUE;
 }
 
-INT APIENTRY DllMain(HMODULE hDLL, DWORD Reason, LPVOID Reserved)
+int main()
 {
-	ofstream ofresult( "result.txt", ios::app); 
-	cout<<"这个在写文件"<<endl;
-	ofresult<<"123"<<"你是好孩子"<<endl;
-	cout<<"第二次写文件"<<endl;
-	ofresult<<"第二次写文件"<<endl;
 	return 0;
 }
