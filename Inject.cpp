@@ -97,6 +97,6 @@ int main()
 {
     DWORD id = processNameToId("chrome.exe");
     cout<<id<<endl;
-    InjectDll("E:\\Env\\code\\test\\dll.dll", id);//这个数字是你想注入的进程的ID号
+    InjectDll("E:\\Env\\code\\CPP-ThreadInject\\dll.dll", id);//这个数字是你想注入的进程的ID号
     return 0;
 }

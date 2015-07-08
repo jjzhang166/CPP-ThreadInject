@@ -1,28 +1,39 @@
-#include <iostream>
-#include <string>
 #include <windows.h>
-#include <fstream>
+#include <stdio.h>
 
-using namespace std;
-
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
+BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
+                       DWORD reason        /* Reason this function is being called. */ ,
+                       LPVOID reserved     /* Not used. */ )
 {
-	/*switch (ul_reason_for_call)
-	{
-	case DLL_PROCESS_ATTACH:
-		MessageBox(NULL,TEXT("关机代码"),TEXT("关机代码"),0);
-		//system("shutdown -s -t 10");
-	break;
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-	break;
-	}*/
-	MessageBox(NULL, "123", "123", 0);
-	return TRUE;
+	switch (reason)
+    {
+      case DLL_PROCESS_ATTACH:
+           MessageBox (0, "From DLL\n", "Process Attach", MB_ICONINFORMATION);
+        break;
+
+      case DLL_PROCESS_DETACH:
+           MessageBox (0, "From DLL\n", "Process Detach", MB_ICONINFORMATION);
+        break;
+
+      case DLL_THREAD_ATTACH:
+           MessageBox (0, "From DLL\n", "Thread Attach", MB_ICONINFORMATION);
+        break;
+
+      case DLL_THREAD_DETACH:
+           MessageBox (0, "From DLL\n", "Thread Detach", MB_ICONINFORMATION);
+        break;
+    }  
+
+    return TRUE;
 }
 
-int main()
-{
-	return 0;
+
+int WINAPI WinMain(      
+    HINSTANCE hInstance,
+    HINSTANCE hPrevInstance,
+    LPSTR lpCmdLine,
+    int nCmdShow)
+{  
+  MessageBox (0, "From DLL\n", "Process Attach", MB_ICONINFORMATION);
+  return 0;
 }
