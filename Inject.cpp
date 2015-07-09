@@ -1,91 +1,99 @@
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <iostream>
-#include "tlhelp32.h"
+#include <tlhelp32.h>
+#include <tchar.h>
 
 using namespace std;
 
 int EnableDebugPriv(const char * name)
 {
-    HANDLE hToken;
-    TOKEN_PRIVILEGES tp;
-    LUID luid;
-    //æ‰“å¼€è¿›ç¨‹ä»¤ç‰Œç¯
-    OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY, &hToken);
-    //è·å¾—è¿›ç¨‹æœ¬åœ°å”¯ä¸€ID
-    LookupPrivilegeValue(NULL, name, &luid) ;
-     
-    tp.PrivilegeCount = 1;
-    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-    tp.Privileges[0].Luid = luid;
-    //è°ƒæ•´æƒé™
-    AdjustTokenPrivileges(hToken, 0, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
-    return 0;
+	HANDLE hToken;
+	TOKEN_PRIVILEGES tp;
+	LUID luid;
+	//´ò¿ª½ø³ÌÁîÅÆ»·
+	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
+	//»ñµÃ½ø³Ì±¾µØÎ¨Ò»ID
+	LookupPrivilegeValue(NULL, name, &luid);
+
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	tp.Privileges[0].Luid = luid;
+	//µ÷ÕûÈ¨ÏŞ
+	AdjustTokenPrivileges(hToken, 0, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
+	return 0;
 }
 
 //*****************************************************************************************************************************
 
 BOOL InjectDll(const char *DllFullPath, const DWORD dwRemoteProcessId)
 {
-    HANDLE hRemoteProcess;
-    EnableDebugPriv(SE_DEBUG_NAME);
-    //æ‰“å¼€è¿œç¨‹çº¿ç¨‹
-    hRemoteProcess = OpenProcess( PROCESS_ALL_ACCESS, FALSE, dwRemoteProcessId );
+	// ÌáÉıÈ¨ÏŞ(±ØĞë¹ÜÀíÔ±Éí·İ)
+	EnableDebugPriv(SE_DEBUG_NAME);
 
-    char *pszLibFileRemote;
+	//´ò¿ªÔ¶³ÌÏß³Ì
+	HANDLE hRemoteProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwRemoteProcessId);
+	if (hRemoteProcess == NULL)
+	{
+		cout << "Error: OpenProcess failed!\n" << endl;
+		return FALSE;
+	}
 
-    //ä½¿ç”¨VirtualAllocExå‡½æ•°åœ¨è¿œç¨‹è¿›ç¨‹çš„å†…å­˜åœ°å€ç©ºé—´åˆ†é…DLLæ–‡ä»¶åç©ºé—´
-    pszLibFileRemote = (char *) VirtualAllocEx( hRemoteProcess, NULL, lstrlen(DllFullPath)+1, MEM_COMMIT, PAGE_READWRITE);
+	//Ê¹ÓÃVirtualAllocExº¯ÊıÔÚÔ¶³Ì½ø³ÌµÄÄÚ´æµØÖ·¿Õ¼ä·ÖÅäDLLÎÄ¼şÃû¿Õ¼ä
+	LPVOID pszLibFileRemote = VirtualAllocEx(hRemoteProcess, NULL, lstrlen(DllFullPath) + 1, MEM_COMMIT, PAGE_READWRITE);
+	if (pszLibFileRemote == 0)
+	{
+		cout << "Error: VirtualAllocEx failed!\n" << endl;
+		return FALSE;
+	}
 
+	//Ê¹ÓÃWriteProcessMemoryº¯Êı½«DLLµÄÂ·¾¶ÃûĞ´Èëµ½Ô¶³Ì½ø³ÌµÄÄÚ´æ¿Õ¼ä
+	if (!WriteProcessMemory(hRemoteProcess, pszLibFileRemote, DllFullPath, lstrlen(DllFullPath) + 1, NULL))
+	{
+		cout << "Error: WriteProcessMemory failed!\n" << endl;
+		return FALSE;
+	}
 
-    //ä½¿ç”¨WriteProcessMemoryå‡½æ•°å°†DLLçš„è·¯å¾„åå†™å…¥åˆ°è¿œç¨‹è¿›ç¨‹çš„å†…å­˜ç©ºé—´
-    WriteProcessMemory(hRemoteProcess, pszLibFileRemote, (void *) DllFullPath, lstrlen(DllFullPath)+1, NULL);
+	//Æô¶¯Ô¶³ÌÏß³ÌLoadLibraryA£¬Í¨¹ıÔ¶³ÌÏß³Ìµ÷ÓÃ´´½¨ĞÂµÄÏß³Ì
+	HANDLE hRemoteThread;
+	if ((hRemoteThread = CreateRemoteThread(hRemoteProcess, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, pszLibFileRemote, 0, NULL)) == NULL)
+	{
+		cout << "Error: the remote thread could not be created.\n" << endl;
+		return FALSE;
+	}
+	else
+	{
+		// µÈ´ıÏß³ÌÍË³ö ÒªÉèÖÃ³¬Ê± ÒÔÃâÔ¶³ÌÏß³Ì¹ÒÆğµ¼ÖÂ³ÌĞòÎŞÏìÓ¦
+		//WaitForSingleObject(hRemoteThread, 10000);
+		// Èç¹ûµÈ´ıÏß³Ì DLLÖĞµÄDllMain²»ÒªĞ´MessageBox
+		cout << "Success: the remote thread was successfully created.\n" << endl;
+	}
 
-	//##############################################################################
-    //è®¡ç®—LoadLibraryAçš„å…¥å£åœ°å€
-    PTHREAD_START_ROUTINE pfnStartAddr = (PTHREAD_START_ROUTINE)
-            GetProcAddress(GetModuleHandle(TEXT("Kernel32")), "LoadLibraryA");
-    //(å…³äºGetModuleHandleå‡½æ•°å’ŒGetProcAddresså‡½æ•°)
+	// ÊÍ·Å¾ä±ú
+	CloseHandle(hRemoteProcess);
+	CloseHandle(hRemoteThread);
 
-    //å¯åŠ¨è¿œç¨‹çº¿ç¨‹LoadLibraryAï¼Œé€šè¿‡è¿œç¨‹çº¿ç¨‹è°ƒç”¨åˆ›å»ºæ–°çš„çº¿ç¨‹
-    HANDLE hRemoteThread;
-    if( (hRemoteThread = CreateRemoteThread(hRemoteProcess, NULL, 0, pfnStartAddr, pszLibFileRemote, 0, NULL) ) == NULL)
-    {
-        cout<<"Error: the remote thread could not be created.\n"<<endl;
-        return FALSE;
-    } else {
-        cout<<"Success: the remote thread was successfully created.\n"<<endl;
-    }
-	//##############################################################################
-
-    /*
-    // åœ¨//###.....//###é‡Œçš„è¯­å¥ä¹Ÿå¯ä»¥ç”¨å¦‚ä¸‹çš„è¯­å¥ä»£æ›¿:
-     DWORD dwID;
-     LPVOID pFunc = LoadLibraryA;
-     HANDLE hRemoteThread = CreateRemoteThread(hRemoteProcess, NULL, 0, (LPTHREAD_START_ROUTINE)pFunc, pszLibFileRemote, 0, &dwID );
-     //æ˜¯ä¸æ˜¯æ„Ÿè§‰ç®€å•äº†å¾ˆå¤š
-    */
-
-    // é‡Šæ”¾å¥æŸ„
-
-    CloseHandle(hRemoteProcess);
-    CloseHandle(hRemoteThread);
-
-    return TRUE;
+	return TRUE;
 }
 
-// æ ¹æ®è¿›ç¨‹åç§°è·å–è¿›ç¨‹ID
+// ¸ù¾İ½ø³ÌÃû³Æ»ñÈ¡½ø³ÌID
 DWORD processNameToId(LPCTSTR lpszProcessName)
 {
 	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	PROCESSENTRY32 pe;
-	pe.dwSize = sizeof(PROCESSENTRY32);
-	if (!Process32First(hSnapshot, &pe))
+	if (hSnapshot)
 	{
-		return 0;
-	}
-	while (Process32Next(hSnapshot, &pe)) {
-		if (!strcmp(lpszProcessName, pe.szExeFile)) {
-			return pe.th32ProcessID;
+		PROCESSENTRY32 pe = {};
+		pe.dwSize = sizeof(PROCESSENTRY32);
+		if (!Process32First(hSnapshot, &pe))
+		{
+			CloseHandle(hSnapshot);
+			return 0;
+		}
+		while (Process32Next(hSnapshot, &pe)) {
+			if (!strcmp(lpszProcessName, pe.szExeFile)) {
+				CloseHandle(hSnapshot);
+				return pe.th32ProcessID;
+			}
 		}
 	}
 	return 0;
@@ -95,8 +103,15 @@ DWORD processNameToId(LPCTSTR lpszProcessName)
 
 int main()
 {
-    DWORD id = processNameToId("chrome.exe");
-    cout<<id<<endl;
-    InjectDll("E:\\Env\\code\\CPP-ThreadInject\\dll.dll", id);//è¿™ä¸ªæ•°å­—æ˜¯ä½ æƒ³æ³¨å…¥çš„è¿›ç¨‹çš„IDå·
-    return 0;
+	DWORD id = processNameToId("calc.exe");
+	cout << id << endl;
+
+	// »ñÈ¡¿ÉÖ´ĞĞÎÄ¼şËùÔÚÄ¿Â¼
+	TCHAR szFilePath[MAX_PATH + 1];
+	GetModuleFileName(NULL, szFilePath, MAX_PATH);
+	*(_tcsrchr(szFilePath, '\\')) = 0;
+
+	_tcscat_s(szFilePath, "\\TestDLL.dll");
+	InjectDll(szFilePath, id);//Õâ¸öÊı×ÖÊÇÄãÏë×¢ÈëµÄ½ø³ÌµÄIDºÅ
+	return 0;
 }
