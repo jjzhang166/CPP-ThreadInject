@@ -48,7 +48,7 @@ BOOL InjectDll(const char *DllFullPath, const DWORD dwRemoteProcessId)
 	}
 
 	//使用WriteProcessMemory函数将DLL的路径名写入到远程进程的内存空间
-	if (WriteProcessMemory(hRemoteProcess, pszLibFileRemote, DllFullPath, lstrlen(DllFullPath) + 1, NULL))
+	if (!WriteProcessMemory(hRemoteProcess, pszLibFileRemote, DllFullPath, lstrlen(DllFullPath) + 1, NULL))
 	{
 		cout << "Error: WriteProcessMemory failed!\n" << endl;
 		return FALSE;
@@ -64,7 +64,8 @@ BOOL InjectDll(const char *DllFullPath, const DWORD dwRemoteProcessId)
 	else
 	{
 		// 等待线程退出 要设置超时 以免远程线程挂起导致程序无响应
-		WaitForSingleObject(hRemoteThread, 10000);
+		//WaitForSingleObject(hRemoteThread, 10000);
+		// 如果等待线程 DLL中的DllMain不要写MessageBox
 		cout << "Success: the remote thread was successfully created.\n" << endl;
 	}
 
@@ -110,7 +111,7 @@ int main()
 	GetModuleFileName(NULL, szFilePath, MAX_PATH);
 	*(_tcsrchr(szFilePath, '\\')) = 0;
 
-	_tcscat_s(szFilePath, "\\dll.dll");
+	_tcscat_s(szFilePath, "\\TestDLL.dll");
 	InjectDll(szFilePath, id);//这个数字是你想注入的进程的ID号
 	return 0;
 }
