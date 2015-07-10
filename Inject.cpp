@@ -103,7 +103,8 @@ DWORD processNameToId(LPCTSTR lpszProcessName)
 
 int main()
 {
-	DWORD id = processNameToId("calc.exe");
+	
+	DWORD id = processNameToId("notepad++.exe");
 	cout << id << endl;
 
 	// 获取可执行文件所在目录
