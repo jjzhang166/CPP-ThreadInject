@@ -27,14 +27,3 @@ BOOL APIENTRY DllMain(HINSTANCE hInst     /* Library instance handle. */,
 
 	return TRUE;
 }
-
-
-/*int WINAPI WinMain(
-	HINSTANCE hInstance,
-	HINSTANCE hPrevInstance,
-	LPSTR lpCmdLine,
-	int nCmdShow)
-{
-	MessageBox(0, "From DLL\n", "Process Attach", MB_ICONINFORMATION);
-	return 0;
-}*/

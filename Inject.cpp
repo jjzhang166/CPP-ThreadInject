@@ -11,15 +11,15 @@ int EnableDebugPriv(const char * name)
 	HANDLE hToken;
 	TOKEN_PRIVILEGES tp;
 	LUID luid;
-	//´ò¿ª½ø³ÌÁîÅÆ»·
+	//æ‰“å¼€è¿›ç¨‹ä»¤ç‰Œç¯
 	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
-	//»ñµÃ½ø³Ì±¾µØÎ¨Ò»ID
+	//è·å¾—è¿›ç¨‹æœ¬åœ°å”¯ä¸€ID
 	LookupPrivilegeValue(NULL, name, &luid);
 
 	tp.PrivilegeCount = 1;
 	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 	tp.Privileges[0].Luid = luid;
-	//µ÷ÕûÈ¨ÏŞ
+	//è°ƒæ•´æƒé™
 	AdjustTokenPrivileges(hToken, 0, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL);
 	return 0;
 }
@@ -28,10 +28,10 @@ int EnableDebugPriv(const char * name)
 
 BOOL InjectDll(const char *DllFullPath, const DWORD dwRemoteProcessId)
 {
-	// ÌáÉıÈ¨ÏŞ(±ØĞë¹ÜÀíÔ±Éí·İ)
+	// æå‡æƒé™(å¿…é¡»ç®¡ç†å‘˜èº«ä»½)
 	EnableDebugPriv(SE_DEBUG_NAME);
 
-	//´ò¿ªÔ¶³ÌÏß³Ì
+	//æ‰“å¼€è¿œç¨‹çº¿ç¨‹
 	HANDLE hRemoteProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwRemoteProcessId);
 	if (hRemoteProcess == NULL)
 	{
@@ -39,7 +39,7 @@ BOOL InjectDll(const char *DllFullPath, const DWORD dwRemoteProcessId)
 		return FALSE;
 	}
 
-	//Ê¹ÓÃVirtualAllocExº¯ÊıÔÚÔ¶³Ì½ø³ÌµÄÄÚ´æµØÖ·¿Õ¼ä·ÖÅäDLLÎÄ¼şÃû¿Õ¼ä
+	//ä½¿ç”¨VirtualAllocExå‡½æ•°åœ¨è¿œç¨‹è¿›ç¨‹çš„å†…å­˜åœ°å€ç©ºé—´åˆ†é…DLLæ–‡ä»¶åç©ºé—´
 	LPVOID pszLibFileRemote = VirtualAllocEx(hRemoteProcess, NULL, lstrlen(DllFullPath) + 1, MEM_COMMIT, PAGE_READWRITE);
 	if (pszLibFileRemote == 0)
 	{
@@ -47,14 +47,14 @@ BOOL InjectDll(const char *DllFullPath, const DWORD dwRemoteProcessId)
 		return FALSE;
 	}
 
-	//Ê¹ÓÃWriteProcessMemoryº¯Êı½«DLLµÄÂ·¾¶ÃûĞ´Èëµ½Ô¶³Ì½ø³ÌµÄÄÚ´æ¿Õ¼ä
+	//ä½¿ç”¨WriteProcessMemoryå‡½æ•°å°†DLLçš„è·¯å¾„åå†™å…¥åˆ°è¿œç¨‹è¿›ç¨‹çš„å†…å­˜ç©ºé—´
 	if (!WriteProcessMemory(hRemoteProcess, pszLibFileRemote, DllFullPath, lstrlen(DllFullPath) + 1, NULL))
 	{
 		cout << "Error: WriteProcessMemory failed!\n" << endl;
 		return FALSE;
 	}
 
-	//Æô¶¯Ô¶³ÌÏß³ÌLoadLibraryA£¬Í¨¹ıÔ¶³ÌÏß³Ìµ÷ÓÃ´´½¨ĞÂµÄÏß³Ì
+	//å¯åŠ¨è¿œç¨‹çº¿ç¨‹LoadLibraryAï¼Œé€šè¿‡è¿œç¨‹çº¿ç¨‹è°ƒç”¨åˆ›å»ºæ–°çš„çº¿ç¨‹
 	HANDLE hRemoteThread;
 	if ((hRemoteThread = CreateRemoteThread(hRemoteProcess, NULL, 0, (LPTHREAD_START_ROUTINE)LoadLibraryA, pszLibFileRemote, 0, NULL)) == NULL)
 	{
@@ -63,20 +63,20 @@ BOOL InjectDll(const char *DllFullPath, const DWORD dwRemoteProcessId)
 	}
 	else
 	{
-		// µÈ´ıÏß³ÌÍË³ö ÒªÉèÖÃ³¬Ê± ÒÔÃâÔ¶³ÌÏß³Ì¹ÒÆğµ¼ÖÂ³ÌĞòÎŞÏìÓ¦
+		// ç­‰å¾…çº¿ç¨‹é€€å‡º è¦è®¾ç½®è¶…æ—¶ ä»¥å…è¿œç¨‹çº¿ç¨‹æŒ‚èµ·å¯¼è‡´ç¨‹åºæ— å“åº”
 		//WaitForSingleObject(hRemoteThread, 10000);
-		// Èç¹ûµÈ´ıÏß³Ì DLLÖĞµÄDllMain²»ÒªĞ´MessageBox
+		// å¦‚æœç­‰å¾…çº¿ç¨‹ DLLä¸­çš„DllMainä¸è¦å†™MessageBox
 		cout << "Success: the remote thread was successfully created.\n" << endl;
 	}
 
-	// ÊÍ·Å¾ä±ú
+	// é‡Šæ”¾å¥æŸ„
 	CloseHandle(hRemoteProcess);
 	CloseHandle(hRemoteThread);
 
 	return TRUE;
 }
 
-// ¸ù¾İ½ø³ÌÃû³Æ»ñÈ¡½ø³ÌID
+// æ ¹æ®è¿›ç¨‹åç§°è·å–è¿›ç¨‹ID
 DWORD processNameToId(LPCTSTR lpszProcessName)
 {
 	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -106,12 +106,12 @@ int main()
 	DWORD id = processNameToId("calc.exe");
 	cout << id << endl;
 
-	// »ñÈ¡¿ÉÖ´ĞĞÎÄ¼şËùÔÚÄ¿Â¼
+	// è·å–å¯æ‰§è¡Œæ–‡ä»¶æ‰€åœ¨ç›®å½•
 	TCHAR szFilePath[MAX_PATH + 1];
 	GetModuleFileName(NULL, szFilePath, MAX_PATH);
 	*(_tcsrchr(szFilePath, '\\')) = 0;
 
-	_tcscat_s(szFilePath, "\\TestDLL.dll");
-	InjectDll(szFilePath, id);//Õâ¸öÊı×ÖÊÇÄãÏë×¢ÈëµÄ½ø³ÌµÄIDºÅ
+	_tcscat_s(szFilePath, "\\dll.dll");
+	InjectDll(szFilePath, id);//è¿™ä¸ªæ•°å­—æ˜¯ä½ æƒ³æ³¨å…¥çš„è¿›ç¨‹çš„IDå·
 	return 0;
 }
